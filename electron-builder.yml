@@ -1,0 +1,41 @@
+appId: dev.cdse.editor
+productName: CD Save Editor
+copyright: Fan-made tool. Crimson Desert and its assets are © Pearl Abyss.
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+extraResources:
+  - from: resources/game
+    to: game
+asar: true
+win:
+  icon: build/icon.ico
+  target:
+    - target: portable
+      arch: [x64]
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+portable:
+  artifactName: ${productName}-${version}-portable.exe
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+  artifactName: ${productName}-${version}-setup.exe
+linux:
+  icon: build/icon.png
+  category: Game
+  synopsis: Save editor for Crimson Desert
+  description: Edit copper, bank, inventory, equipment levels and sockets, companions, knowledge and quests of a Crimson Desert save with the real game icons. Works on SteamOS / Steam Deck.
+  executableName: cd-save-editor
+  target:
+    - target: AppImage
+      arch: [x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+appImage:
+  artifactName: CD-Save-Editor-${version}-x86_64.AppImage

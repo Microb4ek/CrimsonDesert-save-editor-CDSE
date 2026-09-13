@@ -1,0 +1,46 @@
+{
+  "name": "crimson-desert-save-editor",
+  "productName": "Crimson Desert Save Editor",
+  "version": "0.1.0",
+  "description": "Desktop save editor for Crimson Desert (Windows / SteamOS)",
+  "main": "./out/main/index.js",
+  "author": "Microb4ek",
+  "license": "MIT",
+  "private": true,
+  "homepage": "https://github.com/Microb4ek/CrimsonDesert-save-editor-CDSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Microb4ek/CrimsonDesert-save-editor-CDSE.git"
+  },
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:parser": "tsx scripts/parser-check.ts",
+    "dist": "electron-vite build && electron-builder --win --config electron-builder.yml"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11"
+  },
+  "dependencies": {
+    "@fontsource/barlow": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/cinzel": "^5.3.0",
+    "@fontsource/eb-garamond": "^5.3.0",
+    "@fontsource/fredoka": "^5.3.0",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/nunito": "^5.3.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
