@@ -38,6 +38,8 @@ export interface GameData {
   groups: GameGroup[];
   equipSlots: Record<string, EquipSlotDef[]>;
   bags: Record<string, string>;
+  /** slot capacity per bag: base + the save's expansion count, never past max */
+  bagCaps: Record<string, { base: number; max: number }>;
   characters: Record<string, string>;
   knowledge: Record<string, NamedKey>;
   missions: Record<string, NamedKey>;
@@ -82,6 +84,11 @@ export class GameDb {
 
   bagName(key: number): string {
     return this.data.bags[String(key)] ?? `Bag ${key}`;
+  }
+  /** Slot capacity of a bag given the expansion count stored in the save; null when unknown. */
+  bagCapacity(key: number, expand: number): number | null {
+    const c = this.data.bagCaps?.[String(key)];
+    return c ? Math.min(c.max, c.base + Math.max(0, expand)) : null;
   }
   characterName(key: number): string {
     return this.data.characters[String(key)] ?? `Character #${key}`;

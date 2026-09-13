@@ -185,8 +185,15 @@ BAGS = {1: 'Money & resources', 2: 'Inventory', 3: 'Pearl (account)', 4: 'Pearl 
         8: 'Camp warehouse', 9: 'Warehouse', 10: 'Bank vault', 11: 'Camp straw', 12: 'Recovery', 13: 'Kuku', 14: 'Hidden', 15: 'Bag 15',
         16: 'Bag 16', 17: 'Bag 17', 18: 'Collection', 19: 'Bag 19', 20: 'Bag 20'}
 
+# Slot capacity per bag: (base, max) from gamedata/inventory.staticinfobody in 0008/1.paz (game 2.02.00).
+# The save's _varyExpandSlotCount adds to the base, never past the max. Exceeding the capacity crashes the game on load.
+BAG_CAPS = {1: (20, 240), 2: (50, 240), 3: (20, 240), 4: (20, 240), 5: (300, 300), 6: (1, 12), 7: (1, 3), 8: (240, 1000), 9: (240, 240),
+            10: (300, 300), 11: (50, 50), 12: (300, 300), 13: (240, 240), 14: (5, 5), 15: (10, 1000), 16: (10, 1000), 17: (10, 1000),
+            18: (10, 1000), 19: (10, 1000), 20: (50, 50), 21: (1, 30)}
+
 gamedata = {
     'items': items,
+    'bagCaps': {str(k): {'base': b, 'max': mx} for k, (b, mx) in BAG_CAPS.items()},
     'groups': [{'id': g, 'label': l, 'color': c} for g, l, c in GROUPS],
     'equipSlots': equip_slots,
     'bags': BAGS,

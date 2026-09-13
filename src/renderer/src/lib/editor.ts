@@ -150,18 +150,29 @@ export function anyItemTemplate(m: Model, preferBag?: Bag): ObjNode | null {
   return null;
 }
 
-export function freeSlot(m: Model, b: Bag): number {
+/** Slot capacity of a bag (game table + the save's expansion count); null when the table has no entry. */
+export function bagCapacity(db: GameDb, b: Bag): number | null {
+  return db.bagCapacity(b.key, b.expand);
+}
+
+export class BagFullError extends Error {}
+
+/** First unused slot number, or throws when the bag has no room — the game crashes on slots past the capacity. */
+export function freeSlot(m: Model, b: Bag, db?: GameDb): number {
   const used = new Set(b.items.items.map((it) => m.num(it, '_slotNo')));
+  const cap = db ? bagCapacity(db, b) : null;
   let s = 0;
   while (used.has(s)) s++;
+  if (cap !== null && s >= cap) throw new BagFullError(`${db!.bagName(b.key)} is full (${b.items.items.length} of ${cap} slots). Remove or merge stacks first.`);
   return s;
 }
 
 export function addItem(m: Model, db: GameDb, bagKey: number, key: number, count: number): ObjNode {
   const b = bag(m, bagKey);
   if (!b) throw new Error(`Bag ${bagKey} does not exist in this save`);
+  const slot = freeSlot(m, b, db);
   const it = createItem(m, key, count, anyItemTemplate(m, b), db);
-  m.set(it, '_slotNo', freeSlot(m, b));
+  m.set(it, '_slotNo', slot);
   b.items.items.push(it);
   return it;
 }
@@ -187,6 +198,23 @@ export function setSocket(m: Model, node: ObjNode, index: number, gemKey: number
   }
   const valid = list.items.filter((x) => m.num(x, '_itemKey')).length;
   m.set(node, '_validSocketCount', Math.max(valid, m.num(node, '_validSocketCount')));
+}
+
+/** Sanity checks before writing: things the game is known (or very likely) to crash on. */
+export function validate(m: Model, db: GameDb): string[] {
+  const problems: string[] = [];
+  for (const b of bags(m)) {
+    const cap = bagCapacity(db, b);
+    if (cap !== null && b.items.items.length > cap) problems.push(`${db.bagName(b.key)} holds ${b.items.items.length} stacks but has only ${cap} slots`);
+    const seen = new Map<number, number>();
+    for (const it of b.items.items) {
+      const s = m.num(it, '_slotNo');
+      seen.set(s, (seen.get(s) ?? 0) + 1);
+      if (cap !== null && s >= cap) problems.push(`${db.bagName(b.key)}: ${db.itemName(m.num(it, '_itemKey'))} sits in slot ${s}, past the last slot ${cap - 1}`);
+    }
+    for (const [s, n] of seen) if (n > 1) problems.push(`${db.bagName(b.key)}: slot ${s} is used by ${n} stacks`);
+  }
+  return problems;
 }
 
 // ---------------------------------------------------------------- money
@@ -243,12 +271,15 @@ export function bankView(m: Model): BankView {
   return { goldBars, balance: goldBars * GOLD_BAR_VALUE, history, propensity: bankNode ? m.num(bankNode, '_investmentPropensity') : 0, bankNode };
 }
 
-/** The vault holds one Gold Bar item per 50,000 copper deposited. */
+/** The vault holds one Gold Bar item per 50,000 copper deposited; the vault has a fixed number of slots. */
 export function setGoldBars(m: Model, db: GameDb, n: number): void {
   const vault = bag(m, BAG_BANK);
   if (!vault) throw new Error('This save has no bank vault yet - visit a bank in game first');
   const bars = vault.items.items.filter((it) => m.num(it, '_itemKey') === GOLD_BAR_KEY);
   n = Math.max(0, Math.trunc(n));
+  const cap = bagCapacity(db, vault);
+  const others = vault.items.items.length - bars.length;
+  if (cap !== null && n + others > cap) throw new BagFullError(`The vault has ${cap} slots (${others} used by other items): at most ${cap - others} gold bars fit.`);
   while (bars.length > n) {
     const it = bars.pop()!;
     m.remove(vault.items, it);

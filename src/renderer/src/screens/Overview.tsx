@@ -1,7 +1,7 @@
 import type { EditorProps } from '../App';
 import { Field, ItemIcon, NumberField, PageHead } from '../components/common';
 import { fmt } from '../gamedata';
-import { BAG_MONEY, bankView, character, GOLD_BAR_VALUE, moneyLines, setGoldBars, setMoney, setStack, skillPoints, subLevels } from '../lib/editor';
+import { BAG_BANK, BAG_MONEY, bag, bagCapacity, bankView, character, GOLD_BAR_VALUE, moneyLines, setGoldBars, setMoney, setStack, skillPoints, subLevels } from '../lib/editor';
 
 const SKILL_OWNER = ['Player', 'Owner 1', 'Owner 2', 'Owner 3'];
 
@@ -12,6 +12,9 @@ export function Overview({ db, session, mutate }: EditorProps): JSX.Element {
   const bank = bankView(m);
   const subs = subLevels(m);
   const sp = skillPoints(m);
+  const vault = bag(m, BAG_BANK);
+  const vaultCap = vault ? bagCapacity(db, vault) : null;
+  const maxBars = vault && vaultCap !== null ? vaultCap - (vault.items.items.length - bank.goldBars) : 100_000;
 
   return (
     <>
@@ -46,11 +49,11 @@ export function Overview({ db, session, mutate }: EditorProps): JSX.Element {
               <small>one Gold Bar in the vault = {fmt(GOLD_BAR_VALUE)} copper</small>
             </div>
           </div>
-          <Field label={`Gold bars (${fmt(bank.balance)} copper)`}>
-            <NumberField value={bank.goldBars} min={0} max={100_000} onChange={(v) => mutate((mm) => setGoldBars(mm, db, v))} />
+          <Field label={`Gold bars (${fmt(bank.balance)} copper)`} hint={vaultCap !== null ? `the vault has ${vaultCap} slots - up to ${maxBars} bars (${fmt(maxBars * GOLD_BAR_VALUE)} copper)` : undefined}>
+            <NumberField value={bank.goldBars} min={0} max={maxBars} onChange={(v) => mutate((mm) => setGoldBars(mm, db, v))} />
           </Field>
           <div className="quick">
-            {[20, 100, 500, 2000].map((v) => (
+            {[50, 100, 200, maxBars].filter((v, i, a) => v <= maxBars && a.indexOf(v) === i).map((v) => (
               <button key={v} className="chip" onClick={() => mutate((mm) => setGoldBars(mm, db, v))}>
                 {v} bars
               </button>

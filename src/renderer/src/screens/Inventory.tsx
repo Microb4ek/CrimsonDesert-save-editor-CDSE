@@ -5,7 +5,7 @@ import { Field, ItemIcon, NumberField, TierTag, Toggle } from '../components/com
 import { ItemPicker } from '../components/ItemPicker';
 import { fmt } from '../gamedata';
 import type { GameDb } from '../gamedata';
-import { addItem, bags, createItem, freeSlot, itemView, MAX_ENDURANCE, removeItem, setSocket, setStack } from '../lib/editor';
+import { addItem, bagCapacity, bags, createItem, freeSlot, itemView, MAX_ENDURANCE, removeItem, setSocket, setStack } from '../lib/editor';
 import type { Bag, ItemView } from '../lib/editor';
 
 const BAG_ORDER = [2, 5, 8, 9, 10, 13, 18, 1, 14, 6, 7, 11, 12, 3, 4, 15, 16, 17, 19, 20];
@@ -21,6 +21,8 @@ export function Inventory({ db, session, mutate, notify, tick }: EditorProps): J
   const [addCount, setAddCount] = useState(1);
 
   const bag = ordered.find((b) => b.key === bagKey) ?? ordered[0];
+  const cap = bag ? bagCapacity(db, bag) : null;
+  const full = cap !== null && !!bag && bag.items.items.length >= cap;
   const items = useMemo(() => {
     if (!bag) return [];
     const needle = q.trim().toLowerCase();
@@ -40,11 +42,13 @@ export function Inventory({ db, session, mutate, notify, tick }: EditorProps): J
   const onPick = (key: number): void => {
     if (!picker || !bag) return;
     if (picker.mode === 'add') {
+      let added = false;
       mutate((mm) => {
         const n = addItem(mm, db, bag.key, key, addCount);
         setSel(n);
+        added = true;
       });
-      notify(`Added ${addCount > 1 ? `${addCount}× ` : ''}${db.itemName(key)}`, 'ok');
+      if (added) notify(`Added ${addCount > 1 ? `${addCount}× ` : ''}${db.itemName(key)}`, 'ok');
     } else if (picker.mode === 'replace') {
       mutate((mm) => {
         const old = itemView(mm, picker.node);
@@ -80,15 +84,15 @@ export function Inventory({ db, session, mutate, notify, tick }: EditorProps): J
           <>
             <div className="stage-head">
               <h2>{db.bagName(bag.key)}</h2>
-              <span className="hint">
-                {bag.items.items.length} stacks{bag.expand ? ` · ${bag.expand} extra slots` : ''} · bag {bag.key}
+              <span className="hint" style={full ? { color: 'var(--crimson-2)' } : undefined}>
+                {bag.items.items.length}{cap !== null ? ` / ${cap}` : ''} slots used{bag.expand ? ` · ${bag.expand} bought` : ''}{full ? ' · FULL' : ''}
               </span>
               <div className="actions">
                 <div className="search">
                   <input placeholder="Filter…" value={q} onChange={(e) => setQ(e.target.value)} />
                 </div>
                 <NumberField value={addCount} min={1} max={999_999} onChange={setAddCount} className="w-count" />
-                <button className="btn gold" onClick={() => setPicker({ mode: 'add' })}>
+                <button className="btn gold" onClick={() => setPicker({ mode: 'add' })} disabled={full} title={full ? 'No free slot - the game crashes when a bag holds more stacks than it has slots' : undefined}>
                   + Add item
                 </button>
               </div>
@@ -97,11 +101,13 @@ export function Inventory({ db, session, mutate, notify, tick }: EditorProps): J
               {items.map((it) => (
                 <Tile key={String(it.no) + ':' + it.slot} db={db} it={it} selected={selected?.node === it.node} onClick={() => setSel(it.node)} />
               ))}
-              <button className="tile add" onClick={() => setPicker({ mode: 'add' })} title="Add an item">
-                <span className="item-ic" style={{ width: 64, height: 64, borderRadius: 6 }}>+</span>
-              </button>
+              {!full && (
+                <button className="tile add" onClick={() => setPicker({ mode: 'add' })} title="Add an item">
+                  <span className="item-ic" style={{ width: 64, height: 64, borderRadius: 6 }}>+</span>
+                </button>
+              )}
             </div>
-            {bag.key === 2 && bag.expand > 0 && <div className="hint">Inventory expansion: {bag.expand} bonus slots have been unlocked in game.</div>}
+            {full && <div className="notice warn">This bag is full. The game crashes on load when a bag holds more stacks than it has slots, so nothing more can be added here - raise a stack size or remove something instead.</div>}
           </>
         ) : (
           <div className="empty">This save has no inventory block.</div>
@@ -110,7 +116,7 @@ export function Inventory({ db, session, mutate, notify, tick }: EditorProps): J
 
       <div className="side">
         {selected && bag ? (
-          <ItemPanel db={db} bag={bag} it={selected} mutate={mutate} onRemove={() => { mutate((mm) => removeItem(mm, bag, selected.node)); setSel(null); }} onReplace={() => setPicker({ mode: 'replace', node: selected.node })} onSocket={(i) => setPicker({ mode: 'socket', node: selected.node, index: i })} onDuplicate={() => mutate((mm) => { const c = createItem(mm, selected.key, selected.count, selected.node, db); mm.set(c, '_enchantLevel', selected.enchant); mm.set(c, '_slotNo', freeSlot(mm, bag)); bag.items.items.push(c); setSel(c); })} allBags={ordered} onMove={(to) => mutate((mm) => { const target = ordered.find((b) => b.key === to)!; removeItem(mm, bag, selected.node); mm.set(selected.node, '_slotNo', freeSlot(mm, target)); target.items.items.push(selected.node); setSel(null); })} />
+          <ItemPanel db={db} bag={bag} it={selected} mutate={mutate} onRemove={() => { mutate((mm) => removeItem(mm, bag, selected.node)); setSel(null); }} onReplace={() => setPicker({ mode: 'replace', node: selected.node })} onSocket={(i) => setPicker({ mode: 'socket', node: selected.node, index: i })} onDuplicate={() => mutate((mm) => { const c = createItem(mm, selected.key, selected.count, selected.node, db); mm.set(c, '_enchantLevel', selected.enchant); mm.set(c, '_slotNo', freeSlot(mm, bag, db)); bag.items.items.push(c); setSel(c); })} allBags={ordered} onMove={(to) => mutate((mm) => { const target = ordered.find((b) => b.key === to)!; const slot = freeSlot(mm, target, db); removeItem(mm, bag, selected.node); mm.set(selected.node, '_slotNo', slot); target.items.items.push(selected.node); setSel(null); })} />
         ) : (
           <div className="empty">
             Select a stack to edit it.
@@ -194,8 +200,8 @@ export function ItemPanel({
         <Field label="Stack" hint={info?.s ? `game max ${fmt(info.s)}` : undefined}>
           <NumberField value={it.count} min={0} max={9_000_000_000} onChange={(v) => mutate((mm) => setStack(mm, it.node, v))} />
         </Field>
-        <Field label="Slot no.">
-          <NumberField value={it.slot} min={0} max={65535} onChange={(v) => mutate((mm) => mm.set(it.node, '_slotNo', v))} />
+        <Field label="Slot no." hint={bag && bagCapacity(db, bag) !== null ? `0 … ${bagCapacity(db, bag)! - 1}` : undefined}>
+          <NumberField value={it.slot} min={0} max={bag && bagCapacity(db, bag) !== null ? bagCapacity(db, bag)! - 1 : 65535} onChange={(v) => mutate((mm) => mm.set(it.node, '_slotNo', v))} />
         </Field>
         <Field label="Enchant level" hint={maxEnchant ? `game max +${maxEnchant}` : gear ? 'no enchant data for this item' : undefined}>
           <NumberField value={it.enchant} min={0} max={65535} onChange={(v) => mutate((mm) => mm.set(it.node, '_enchantLevel', v))} />

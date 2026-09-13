@@ -15,7 +15,7 @@ import { Companions } from './screens/Companions';
 import { Knowledge } from './screens/Knowledge';
 import { Progress } from './screens/Progress';
 import { Explorer } from './screens/Explorer';
-import { character, maxItemNo, moneyLines } from './lib/editor';
+import { character, maxItemNo, moneyLines, validate } from './lib/editor';
 import { slotTitle } from './lib/slots';
 import { fmt } from './gamedata';
 
@@ -125,6 +125,10 @@ export default function App(): JSX.Element {
     if (!session) return;
     setSaving(true);
     try {
+      if (db) {
+        const problems = validate(session.model, db);
+        if (problems.length) throw new Error(`The game would crash on this save:\n${problems.slice(0, 6).join('\n')}${problems.length > 6 ? `\n… ${problems.length - 6} more` : ''}`);
+      }
       const blob = serializeParc(session.model.doc);
       parseParc(blob); // must round-trip before touching the disk
       const bytes = sealSave(session.container, blob);
@@ -151,7 +155,7 @@ export default function App(): JSX.Element {
     } finally {
       setSaving(false);
     }
-  }, [session, notify]);
+  }, [session, notify, db]);
 
   const close = useCallback(() => {
     if (dirty && !window.confirm('You have unsaved changes. Close this save anyway?')) return;

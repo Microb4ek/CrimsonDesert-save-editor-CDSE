@@ -13,7 +13,7 @@ A desktop save editor for **Crimson Desert** — Windows and SteamOS / Steam Dec
 - **Knowledge** — everything learned with its level; learn any knowledge, forget it, clear "new" marks
 - **Quests** — mission and quest states (locked → reward received), add entries as completed, remove them
 - **Raw data** — a tree of every value in the save with inline editing, so anything the screens don't cover can still be changed
-- **Safety** — the editor re-parses its own output, re-opens the sealed file and checks the HMAC before writing; the original is copied to `CDSE-backups/` inside the slot folder on every write; `lobby.save`'s item counter is kept in sync so the game never reuses an item number
+- **Safety** — every bag has a slot capacity (from the game's inventory table; e.g. bank vault 300, inventory 50 + purchased expansions up to 240); the editor refuses to add past it and blocks saving a file the game would crash on. The editor re-parses its own output, re-opens the sealed file and checks the HMAC before writing; the original is copied to `CDSE-backups/` inside the slot folder on every write; `lobby.save`'s item counter is kept in sync so the game never reuses an item number
 
 ![Equipment](docs/equipment.png)
 
